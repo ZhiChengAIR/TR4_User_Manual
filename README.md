@@ -7,7 +7,9 @@
 |![ros](https://img.shields.io/badge/ROS2-humble-blue.svg)|![Pass](https://img.shields.io/badge/Pass-blue.svg)|
 
 ## 概述
+
 TR4 是一个集 **双臂机械臂 + 升降机 + 移动底盘 + 夹爪 + 多相机 + 遥操作** 于一体的复合型机器人平台。  本项目基于 **ROS 2**，提供驱动层、控制层、遥操作层的完整接口，方便二次开发与应用集成。建议使用ubuntu22.04+ROS2 humble 进行开发。
+
 ![TR4](assets/images/TR4.PNG)
 ---
 

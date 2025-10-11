@@ -1,0 +1,230 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:macro name="zc_gripper_rev3" params="prefix parent_link origin_xyz origin_rpy">
+
+    <joint name="${prefix}eef_joint" type="fixed">
+      <parent link="${parent_link}"/>
+      <child link="${prefix}base_link"/>
+      <origin xyz="${origin_xyz}" rpy="${origin_rpy}"/>
+    </joint>
+
+    <!-- base_link -->
+    <link name="${prefix}base_link">
+      <inertial>
+        <origin xyz="0.041595 3.8229E-05 0.0084072" rpy="0 0 0" />
+        <mass value="0.21079" />
+        <inertia ixx="0.00015248" ixy="-4.2673E-07" ixz="-1.2221E-06"
+                 iyy="0.0001472" iyz="-7.0428E-07" izz="0.00015973" />
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://zc_gripper_rev3_description/meshes/base_link.STL" />
+        </geometry>
+        <material name=""><color rgba="0.89804 0.91765 0.92941 1"/></material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="package://zc_gripper_rev3_description/meshes/base_link.STL" />
+        </geometry>
+      </collision>
+    </link>
+
+  <!-- Left finger chain -->
+  <link name="${prefix}l_link1">
+    <inertial>
+      <origin xyz="0.025591 0.01098 0.00012619" rpy="0 0 0" />
+      <mass value="0.025052" />
+      <inertia ixx="3.8147E-06" ixy="8.0164E-07" ixz="-2.625E-08"
+               iyy="4.5288E-06" iyz="1.6433E-08" izz="6.104E-06" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/l_link1.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.11373 0.11373 0.11373 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/l_link1.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}l_joint1" type="revolute">
+    <origin xyz="0.096753 0.0306 0" rpy="0 0 0" />
+    <parent link="${prefix}base_link" />
+    <child link="${prefix}l_link1" />
+    <axis xyz="0 0 -1" />
+    <limit lower="-1.0472" upper="0" effort="0" velocity="0" />
+  </joint>
+
+  <link name="${prefix}l_link2">
+    <inertial>
+      <origin xyz="0.017854 -0.014801 0.00022853" rpy="0 0 0" />
+      <mass value="0.016248" />
+      <inertia ixx="1.1526E-06" ixy="3.4183E-07" ixz="6.0475E-09"
+               iyy="1.8417E-06" iyz="-1.7073E-08" izz="1.9483E-06" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/l_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.1098 0.1098 0.1098 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/l_link2.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}l_joint2" type="revolute">
+    <origin xyz="0.056957 -0.0046989 0" rpy="0 0 0" />
+    <parent link="${prefix}l_link1" />
+    <child link="${prefix}l_link2" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0" upper="1.0472" effort="0" velocity="0" />
+  </joint>
+
+  <link name="${prefix}l_link3">
+    <inertial>
+      <origin xyz="-0.026661 0.0026672 -6.7314E-05" rpy="0 0 0" />
+      <mass value="0.012807" />
+      <inertia ixx="3.0944E-06" ixy="2.1726E-07" ixz="-6.4057E-09"
+               iyy="5.8728E-06" iyz="1.2515E-10" izz="3.0853E-06" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/l_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.11373 0.11373 0.11373 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/l_link3.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}l_joint3" type="revolute">
+    <origin xyz="0.0065155 -0.017901 0" rpy="0 0 0" />
+    <parent link="${prefix}l_link2" />
+    <child link="${prefix}l_link3" />
+    <axis xyz="0 0 -1" />
+    <limit lower="-1.0472" upper="0" effort="0" velocity="0" />
+  </joint>
+
+  <!-- Right finger chain -->
+  <link name="${prefix}r_link1">
+    <inertial>
+      <origin xyz="0.025591 -0.01098 0.00012554" rpy="0 0 0" />
+      <mass value="0.025051" />
+      <inertia ixx="3.8145E-06" ixy="-8.0156E-07" ixz="-2.639E-08"
+               iyy="4.5285E-06" iyz="-1.6541E-08" izz="6.1038E-06" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/r_link1.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.11373 0.11373 0.11373 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/r_link1.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}r_joint1" type="revolute">
+    <origin xyz="0.096753 -0.0306 0" rpy="0 0 0" />
+    <parent link="${prefix}base_link" />
+    <child link="${prefix}r_link1" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0" upper="1.0472" effort="0" velocity="0" />
+  </joint>
+
+  <link name="${prefix}r_link2">
+    <inertial>
+      <origin xyz="0.017856 0.014802 0.00022741" rpy="0 0 0" />
+      <mass value="0.016244" />
+      <inertia ixx="1.1523E-06" ixy="-3.4181E-07" ixz="6.1573E-09"
+               iyy="1.8414E-06" iyz="1.71E-08" izz="1.9481E-06" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/r_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.054902 0.054902 0.054902 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/r_link2.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}r_joint2" type="revolute">
+    <origin xyz="0.056957 0.0046989 0" rpy="0 0 0" />
+    <parent link="${prefix}r_link1" />
+    <child link="${prefix}r_link2" />
+    <axis xyz="0 0 -1" />
+    <limit lower="-1.0472" upper="0" effort="0" velocity="0" />
+  </joint>
+
+  <link name="${prefix}r_link3">
+    <inertial>
+      <origin xyz="-0.02666 -0.0026673 -6.7319E-05" rpy="0 0 0" />
+      <mass value="0.012807" />
+      <inertia ixx="3.0944E-06" ixy="-2.1728E-07" ixz="-6.4065E-09"
+               iyy="5.8728E-06" iyz="-1.2491E-10" izz="3.0853E-06" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/r_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.11373 0.11373 0.11373 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zc_gripper_rev3_description/meshes/r_link3.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="${prefix}r_joint3" type="revolute">
+    <origin xyz="0.0065147 0.017901 0" rpy="0 0 0" />
+    <parent link="${prefix}r_link2" />
+    <child link="${prefix}r_link3" />
+    <axis xyz="0 0 -1" />
+    <limit lower="0" upper="1.0472" effort="0" velocity="0" />
+  </joint>
+
+  </xacro:macro>
+</robot>
