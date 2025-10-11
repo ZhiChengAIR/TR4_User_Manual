@@ -1,0 +1,11 @@
+# Ignore build and development files
+src/CMakeLists.txt
+build
+.vscode
+.idea
+*.log
+*.7z
+*.zip
+*.tar
+__pycache__
+log
