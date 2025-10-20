@@ -12,7 +12,11 @@ TR4 是一个集 **双臂机械臂 + 升降机 + 移动底盘 + 夹爪 + 多相�
 
 ![TR4](assets/images/TR4.PNG)
 ---
+## 快速启动
 
+[启动指导文档](./bringup_guidence.md)
+
+---
 ## 系统架构
 ![完整rosgraph](assets/images/TR4_rosgraph.png)
 - **Drivers**: 直连硬件 (Arm, Chassis, Elevator, Gripper, Cameras)
