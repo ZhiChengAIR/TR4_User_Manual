@@ -10,7 +10,7 @@
 
 TR4 是一个集 **双臂机械臂 + 升降机 + 移动底盘 + 夹爪 + 多相机 + 遥操作** 于一体的复合型机器人平台。  本项目基于 **ROS 2**，提供驱动层、控制层、遥操作层的完整接口，方便二次开发与应用集成。建议使用ubuntu22.04+ROS2 humble 进行开发。
 
-![TR4](assets/images/TR4.PNG)
+![TR4](assets/images/TR4.jpg)
 ---
 ## 快速启动
 
@@ -18,110 +18,233 @@ TR4 是一个集 **双臂机械臂 + 升降机 + 移动底盘 + 夹爪 + 多相�
 
 ---
 ## 系统架构
-![完整rosgraph](assets/images/TR4_rosgraph.png)
 - **Drivers**: 直连硬件 (Arm, Chassis, Elevator, Gripper, Cameras)
 - **Controllers**: 高级控制 (滤波、插值、加速度限制、安全保护)
-- **Teleop / Apps**: VR/手柄遥操作、任务脚本、外部系统桥接
-
----
-
-## 快速上⼿攻略（5分钟）
-- 安全检查与准备：
-清空机器⼈周围 1.5 m 半径的空间；急停按钮可触达(基础版的急停功能需要直接关闭整机电源 按钮来完成，双臂有死特性不会下坠)。打开底盘电源、上电升降机与双臂控制柜；连接开发主机与机器⼈到同⼀⽹段。VR/⼿柄（若使⽤）与主机配对成功。
-
-- 启动顺序：
-驱动→控制→遥操作/应⽤
-
-- 驱动层（drivers）：
-左右臂  `tr4_arm_driver` 、升降机  `tr4_elevator_driver` 、底盘 `chassis_driver` 、相机 `tr4/usb_cam_right_wrist`、`tr4/ysb_cam_left_wrist`、`tr4/usb_cam_ high`、`tr4/usb_cam_low` 。驱动层负责与硬件直连并发布状态、接收底层控制命令。
-
-- 控制层（controllers）:
-臂 `arm_controller` 、夹⽖ `gripper_controller`  、底盘 `chassis_controller`  、升降机控制器`elevator_controller` ，提供安全过滤、出⼊栈、加速度限制等功能。
-
-- 遥操作/上层应⽤:
-VR/⼿柄遥操作、任务脚本、桥接到外部系统等。接⼝集中定义在 `interf aces.yaml`
-
-- 最⼩功能验证（示例话题均来⾃接⼝约定）
-    1. 让底盘以 `0.1 m/s` 前进并⾃动限加速度：向`controller/chassis/acc_limited_vel_ctrl`  发送   `geometry_msgs/TwistStamped （   linear.x=0.1 ）`。控制器会⾃动做加速度与速度限幅。
-    2. 打开左夹⽖：向`controller/left_gripper/dirct_ctrl`发送`moderos_interfaces/GripperCmd{cmd:0, vel:800, eff:30}` ，控制器会按阈值限速限⼒后下发到驱动。
-    3. 让右臂回到“复位位”：向`controller/right_arm/simple_reset`发布空消息，等待`contr oller/right_arm/simple_reset_result`返回`true` 。
-
 ---
 
 ## 节点与话题接口
 
-### 1. 机械臂
+---
 
-#### 1.1 驱动节点 `tr4_arm_driver`
-| Node             | Topic                               | Dir  | Msg Type                      | Freq       | Notes |
-|------------------|-------------------------------------|------|-------------------------------|------------|------|
-| tr4_arm_driver   | `driver/<arm>/pose`                 | Pub  | `geometry_msgs/PoseStamped`   | 100 Hz     | 末端位姿 |
-| tr4_arm_driver   | `driver/<arm>/joint_states`         | Pub  | `sensor_msgs/JointState`      | 100 Hz     | 关节状态 |
-| tr4_arm_driver   | `driver/<arm>/pose_cmd`             | Sub  | `geometry_msgs/PoseStamped`   | ≤60 Hz     | 下发末端位姿 |
-| tr4_arm_driver   | `driver/<arm>/joint_cmd`            | Sub  | `sensor_msgs/JointState`      | ≤60 Hz     | 下发关节角 |
-| tr4_arm_driver   | `driver/<arm>/stop_cmd`             | Sub  | `std_msgs/Empty`              | event      | 急停 |
-| tr4_arm_driver   | `driver/<arm>/resume_cmd`           | Sub  | `std_msgs/Empty`              | event      | 恢复 |
-
-#### 1.2 控制节点 `arm_controller`
-| Node            | Topic                                      | Dir  | Msg Type                    | Freq        | Notes |
-|-----------------|--------------------------------------------|------|-----------------------------|-------------|------|
-| arm_controller  | `controller/<arm>/linear_interp_pose_ctrl` | Sub  | `geometry_msgs/PoseStamped` | ≤60 Hz      | 线性插值输入 |
-| arm_controller  | `controller/<arm>/spline_interp_pose_ctrl` | Sub  | `geometry_msgs/PoseStamped` | ≤60 Hz      | 样条插值输入 |
-| arm_controller  | `controller/<arm>/simple_reset`            | Sub  | `std_msgs/Empty`            | event       | 一键复位 |
-| arm_controller  | `controller/<arm>/simple_reset_result`     | Pub  | `std_msgs/Bool`             | event       | 复位结果 |
-| arm_controller  | `driver/<arm>/pose_cmd` (输出)            | Pub  | `geometry_msgs/PoseStamped` | cfg (~100)  | 转发/插值结果 |
+### driver/left_arm
+| Node           | Topic                                  | Dir | Msg Type                  | Freq    | Notes      |
+| -------------- | -------------------------------------- | --- | ------------------------- | ------- | ---------- |
+| tr4_arm_driver | driver/left_arm/pose                   | Pub | geometry_msgs/PoseStamped | 100 Hz  | 末端位姿       |
+| tr4_arm_driver | driver/left_arm/get_pose_result        | Pub | geometry_msgs/PoseStamped | event   | 获取末端位姿结果   |
+| tr4_arm_driver | driver/left_arm/joint_state            | Pub | sensor_msgs/JointState    | 100 Hz  | 关节状态       |
+| tr4_arm_driver | driver/left_arm/get_joint_state_result | Pub | sensor_msgs/JointState    | event   | 获取关节状态结果   |
+| tr4_arm_driver | driver/left_arm/simple_movej_result    | Pub | std_msgs/Bool             | event   | MoveJ 执行结果 |
+| tr4_arm_driver | driver/left_arm/pose_cmd               | Sub | geometry_msgs/PoseStamped | ≤200 Hz | 下发末端位姿     |
+| tr4_arm_driver | driver/left_arm/get_pose_cmd           | Sub | std_msgs/Empty            | event   | 获取末端位姿指令   |
+| tr4_arm_driver | driver/left_arm/joint_cmd              | Sub | sensor_msgs/JointState    | ≤200 Hz | 下发关节角      |
+| tr4_arm_driver | driver/left_arm/get_joint_state_cmd    | Sub | std_msgs/Empty            | event   | 获取关节状态指令   |
+| tr4_arm_driver | driver/left_arm/stop_cmd               | Sub | std_msgs/Empty            | event   | 急停         |
+| tr4_arm_driver | driver/left_arm/resume_cmd             | Sub | std_msgs/Empty            | event   | 恢复         |
+| tr4_arm_driver | driver/left_arm/simple_movej_cmd       | Sub | moderos_interfaces/MoveJ  | event   | MoveJ 指令   |
+| tr4_arm_driver | driver/left_arm/simple_movel_result    | Pub | std_msgs/Bool             | event   | MoveL 执行结果 |
+| tr4_arm_driver | driver/left_arm/simple_movel_cmd       | Sub | moderos_interfaces/MoveL  | event   | MoveL 指令   |
 
 ---
 
-### 2. 夹爪
-| Node               | Topic                            | Dir  | Msg Type                        | Freq     | Notes |
-|--------------------|----------------------------------|------|---------------------------------|----------|------|
-| gripper_controller | `controller/<gripper>/dirct_ctrl`| Sub  | `moderos_interfaces/GripperCmd` | event    | 开/关/复位，含 vel/eff |
-| tr4_arm_driver     | `driver/<gripper>/cmd`           | Pub  | `moderos_interfaces/GripperCmd` | event    | 驱动下发 RS485 |
+### driver/right_arm
+| Node           | Topic                                   | Dir | Msg Type                  | Freq    | Notes      |
+| -------------- | --------------------------------------- | --- | ------------------------- | ------- | ---------- |
+| tr4_arm_driver | driver/right_arm/pose                   | Pub | geometry_msgs/PoseStamped | 100 Hz  | 末端位姿       |
+| tr4_arm_driver | driver/right_arm/get_pose_result        | Pub | geometry_msgs/PoseStamped | event   | 获取末端位姿结果   |
+| tr4_arm_driver | driver/right_arm/joint_state            | Pub | sensor_msgs/JointState    | 100 Hz  | 关节状态       |
+| tr4_arm_driver | driver/right_arm/get_joint_state_result | Pub | sensor_msgs/JointState    | event   | 获取关节状态结果   |
+| tr4_arm_driver | driver/right_arm/simple_movej_result    | Pub | std_msgs/Bool             | event   | MoveJ 执行结果 |
+| tr4_arm_driver | driver/right_arm/pose_cmd               | Sub | geometry_msgs/PoseStamped | ≤200 Hz | 下发末端位姿     |
+| tr4_arm_driver | driver/right_arm/get_pose_cmd           | Sub | std_msgs/Empty            | event   | 获取末端位姿指令   |
+| tr4_arm_driver | driver/right_arm/joint_cmd              | Sub | sensor_msgs/JointState    | ≤200 Hz | 下发关节角      |
+| tr4_arm_driver | driver/right_arm/get_joint_state_cmd    | Sub | std_msgs/Empty            | event   | 获取关节状态指令   |
+| tr4_arm_driver | driver/right_arm/stop_cmd               | Sub | std_msgs/Empty            | event   | 急停         |
+| tr4_arm_driver | driver/right_arm/resume_cmd             | Sub | std_msgs/Empty            | event   | 恢复         |
+| tr4_arm_driver | driver/right_arm/simple_movej_cmd       | Sub | moderos_interfaces/MoveJ  | event   | MoveJ 指令   |
+| tr4_arm_driver | driver/right_arm/simple_movel_result    | Pub | std_msgs/Bool             | event   | MoveL 执行结果 |
+| tr4_arm_driver | driver/right_arm/simple_movel_cmd       | Sub | moderos_interfaces/MoveL  | event   | MoveL 指令   |
 
 ---
 
-### 3. 底盘
-| Node               | Topic                                   | Dir  | Msg Type                    | Freq    | Notes |
-|--------------------|-----------------------------------------|------|-----------------------------|---------|------|
-| chassis_controller | `controller/chassis/dirct_vel_ctrl`     | Sub  | `geometry_msgs/TwistStamped`| 5–20 Hz | 直接速度控制 |
-| chassis_controller | `controller/chassis/acc_limited_vel_ctrl`| Sub | `geometry_msgs/TwistStamped`| 5–20 Hz | 限加速度控制 |
-| chassis_controller | `driver/chassis/cmd_vel_stamp`          | Pub  | `geometry_msgs/TwistStamped`| 5 Hz    | 转发给驱动 |
-| tr4_chassis_driver | `driver/chassis/odom`                   | Pub  | `nav_msgs/Odometry`         | 50 Hz   | 里程计 |
-| tr4_chassis_driver | `driver/chassis/vehicle_path`           | Pub  | `nav_msgs/Path`             | 50 Hz   | 轨迹 |
+### driver/grippers
+| Node           | Topic                    | Dir | Msg Type                      | Freq  | Notes   |
+| -------------- | ------------------------ | --- | ----------------------------- | ----- | ------- |
+| tr4_arm_driver | driver/left_gripper/cmd  | Sub | moderos_interfaces/GripperCmd | ≤10 Hz| 左夹爪控制指令 |
+| tr4_arm_driver | driver/right_gripper/cmd | Sub | moderos_interfaces/GripperCmd | ≤10 Hz| 右夹爪控制指令 |
 
 ---
 
-### 4. 升降机
-| Node                | Topic                              | Dir  | Msg Type                   | Freq     | Notes |
-|---------------------|------------------------------------|------|----------------------------|----------|------|
-| elevator_controller | `controller/elevator/dirct_vel_ctrl`| Sub | `geometry_msgs/TwistStamped`| 5–20 Hz | 直接速度控制 |
-| elevator_controller | `controller/elevator/acc_limited_vel_ctrl`| Sub | `geometry_msgs/TwistStamped`| 5–20 Hz | 限加速度控制 |
-| tr4_elevator_driver | `driver/elevator/cmd_vel`          | Sub  | `geometry_msgs/TwistStamped`| 5–20 Hz | 速度模式 (50ms 自动置零) |
-| tr4_elevator_driver | `driver/elevator/position_cmd`     | Sub  | `sensor_msgs/JointState`    | event    | 高度 (m) |
-| tr4_elevator_driver | `driver/elevator/joint_state`      | Pub  | `sensor_msgs/JointState`    | 100 Hz   | 实际高度 |
+### driver/chassis
+| Node               | Topic                  | Dir | Msg Type            | Freq  | Notes  |
+| ------------------ | ---------------------- | --- | ------------------- | ----- | ------ |
+| tr4_chassis_driver | driver/chassis/odom    | Pub | nav_msgs/Odometry   | 50 Hz | 里程计    |
+| tr4_chassis_driver | driver/chassis/cmd_vel | Sub | geometry_msgs/Twist | ≤10 Hz | 底盘速度指令 |
+| tr4_chassis_driver | driver/chassis/stop    | Sub | std_msgs/Empty      | event | 底盘急停   |
 
 ---
 
-### 5. 相机
-| Node              | Topic                   | Dir  | Msg Type                   | Freq   | Notes |
-|-------------------|-------------------------|------|----------------------------|--------|------|
-| realsense2_camera | `<cam>/color/image_raw` | Pub  | `sensor_msgs/Image`        | 30 Hz  | 彩色图像 |
-| realsense2_camera | `<cam>/depth/image_raw` | Pub  | `sensor_msgs/Image`        | 30 Hz  | 深度图像 |
-| realsense2_camera | `<cam>/camera_info`     | Pub  | `sensor_msgs/CameraInfo`   | 30 Hz  | 相机内参 |
-| realsense2_camera | `<cam>/point_cloud`     | Pub  | `sensor_msgs/PointCloud2`  | 15–30  | 点云 |
+### driver/elevator
+| Node                | Topic                         | Dir | Msg Type                   | Freq    | Notes           |
+| ------------------- | ----------------------------- | --- | -------------------------- | ------- | --------------- |
+| tr4_elevator_driver | driver/elevator/joint_state   | Pub | sensor_msgs/JointState     | 100 Hz  | 实际高度反馈          |
+| tr4_elevator_driver | driver/elevator/cmd_vel_stamp | Sub | geometry_msgs/TwistStamped | ≤20 Hz  | 速度模式指令 |
+| tr4_elevator_driver | driver/elevator/poistion_cmd  | Sub | sensor_msgs/JointState     | event   | 高度命令（m）         |
+| tr4_elevator_driver | driver/elevator/stop_cmd      | Sub | std_msgs/Empty             | event   | 急停              |
+| tr4_elevator_driver | driver/elevator/resume_cmd    | Sub | std_msgs/Empty             | event   | 恢复              |
 
 ---
 
-### 6. 外部桥接 `coinrobot_bridge`
-| Node             | Topic                             | Dir  | Msg Type           | Freq    | Notes |
-|------------------|-----------------------------------|------|--------------------|---------|------|
-| coinrobot_bridge | `/translator_json/left_pose`      | Pub  | `std_msgs/String`  | 100 Hz  | JSON pose |
-| coinrobot_bridge | `/translator_json/right_pose`     | Pub  | `std_msgs/String`  | 100 Hz  | JSON pose |
-| coinrobot_bridge | `/translator_json/*_joint_state`  | Pub  | `std_msgs/String`  | 100 Hz  | JSON joints |
-| coinrobot_bridge | `/translator_json/*_gripper_ctrl_cmd`| Pub| `std_msgs/String` | event   | JSON gripper |
+### driver/<camera>
+| Node              | Topic                                    | Dir | Msg Type                    | Freq  | Notes  |
+| ----------------- | ---------------------------------------- | --- | --------------------------- | ----- | ------ |
+| realsense2_camera | /<camera>/compressed      | Pub | sensor_msgs/CompressedImage | 30 Hz | 彩色压缩图像 |
 
 ---
+
+### controller/left_arm
+| Node           | Topic                                       | Dir | Msg Type                  | Freq   | Notes       |
+| -------------- | ------------------------------------------- | --- | ------------------------- | ------ | ----------- |
+| arm_controller | controller/left_arm/pose_cmd                | Pub | geometry_msgs/PoseStamped | event  | 输出插值结果      |
+| arm_controller | controller/left_arm/joint_cmd               | Pub | sensor_msgs/JointState    | event  | 输出关节插值结果    |
+| arm_controller | controller/left_arm/simple_movej_cmd        | Pub | moderos_interfaces/MoveJ  | event  | MoveJ 指令    |
+| arm_controller | controller/left_arm/simple_reset_result     | Pub | std_msgs/Bool             | event  | 复位结果        |
+| arm_controller | controller/left_arm/move_idle_joint_result  | Pub | std_msgs/Bool             | event  | 空闲位移动结果     |
+| arm_controller | controller/left_arm/move_idle2work_result   | Pub | std_msgs/Bool             | event  | 空闲→工作位移动结果  |
+| arm_controller | controller/left_arm/move_work2idle_result   | Pub | std_msgs/Bool             | event  | 工作→空闲位移动结果  |
+| arm_controller | controller/left_arm/wave_arm_result         | Pub | std_msgs/Bool             | event  | 挥手动作结果      |
+| arm_controller | driver/left_arm/pose                        | Sub | geometry_msgs/PoseStamped | 100 Hz | 接收末端位姿      |
+| arm_controller | driver/left_arm/joint_state                 | Sub | sensor_msgs/JointState    | 100 Hz | 接收关节状态      |
+| arm_controller | controller/left_arm/dirct_pose_ctrl         | Sub | geometry_msgs/PoseStamped | ≤200 Hz | 直接末端控制输入    |
+| arm_controller | controller/left_arm/ema_pose_ctrl           | Sub | geometry_msgs/PoseStamped | ≤50 Hz | EMA滤波末端控制输入 |
+| arm_controller | controller/left_arm/linear_interp_pose_ctrl | Sub | geometry_msgs/PoseStamped | ≤50 Hz | 线性插值末端控制输入      |
+| arm_controller | controller/left_arm/dirct_joint_ctrl        | Sub | sensor_msgs/JointState    | ≤200 Hz | 直接关节控制输入    |
+| arm_controller | controller/left_arm/ema_joint_ctrl          | Sub | sensor_msgs/JointState    | ≤50 Hz | EMA滤波关节输入   |
+| arm_controller | driver/left_arm/simple_movej_result         | Sub | std_msgs/Bool             | event  | MoveJ 执行反馈  |
+| arm_controller | controller/left_arm/simple_reset            | Sub | std_msgs/Empty            | event  | 一键复位指令      |
+| arm_controller | controller/left_arm/move_idle_joint         | Sub | std_msgs/Empty            | event  | 空闲位置移动      |
+| arm_controller | driver/left_arm/stop_cmd                    | Pub | std_msgs/Empty            | event  | 急停          |
+| arm_controller | driver/left_arm/resume_cmd                  | Pub | std_msgs/Empty            | event  | 恢复          |
+
+---
+
+### controller/right_arm
+| Node           | Topic                                        | Dir | Msg Type                  | Freq   | Notes       |
+| -------------- | -------------------------------------------- | --- | ------------------------- | ------ | ----------- |
+| arm_controller | controller/right_arm/pose_cmd                | Pub | geometry_msgs/PoseStamped | event  | 输出插值结果      |
+| arm_controller | controller/right_arm/joint_cmd               | Pub | sensor_msgs/JointState    | event  | 输出关节插值结果    |
+| arm_controller | controller/right_arm/simple_movej_cmd        | Pub | moderos_interfaces/MoveJ  | event  | MoveJ 指令    |
+| arm_controller | controller/right_arm/simple_reset_result     | Pub | std_msgs/Bool             | event  | 复位结果        |
+| arm_controller | controller/right_arm/move_idle_joint_result  | Pub | std_msgs/Bool             | event  | 空闲位移动结果     |
+| arm_controller | controller/right_arm/move_work2idle_result   | Pub | std_msgs/Bool             | event  | 工作→空闲位移动结果  |
+| arm_controller | controller/right_arm/move_idle2work_result   | Pub | std_msgs/Bool             | event  | 空闲→工作位移动结果  |
+| arm_controller | controller/right_arm/wave_arm_result         | Pub | std_msgs/Bool             | event  | 挥手动作结果      |
+| arm_controller | driver/right_arm/pose                        | Sub | geometry_msgs/PoseStamped | 100 Hz | 接收末端位姿      |
+| arm_controller | driver/right_arm/joint_state                 | Sub | sensor_msgs/JointState    | 100 Hz | 接收关节状态      |
+| arm_controller | controller/right_arm/dirct_pose_ctrl         | Sub | geometry_msgs/PoseStamped | ≤200 Hz | 直接末端控制输入    |
+| arm_controller | controller/right_arm/ema_pose_ctrl           | Sub | geometry_msgs/PoseStamped | ≤50 Hz | EMA滤波末端控制输入 |
+| arm_controller | controller/right_arm/linear_interp_pose_ctrl | Sub | geometry_msgs/PoseStamped | ≤50 Hz | 线性插值末端控制输入      |
+| arm_controller | controller/right_arm/dirct_joint_ctrl        | Sub | sensor_msgs/JointState    | ≤200 Hz | 直接关节控制输入    |
+| arm_controller | controller/right_arm/ema_joint_ctrl          | Sub | sensor_msgs/JointState    | ≤50 Hz | EMA滤波关节输入   |
+| arm_controller | driver/right_arm/simple_movej_result         | Sub | std_msgs/Bool             | event  | MoveJ 执行反馈  |
+| arm_controller | controller/right_arm/simple_reset            | Sub | std_msgs/Empty            | event  | 一键复位指令      |
+| arm_controller | controller/right_arm/move_idle_joint         | Sub | std_msgs/Empty            | event  | 空闲位置移动      |
+| arm_controller | controller/right_arm/wave_arm                | Sub | std_msgs/Empty            | event  | 挥手指令        |
+| arm_controller | driver/right_arm/stop_cmd                    | Pub | std_msgs/Empty            | event  | 急停          |
+| arm_controller | driver/right_arm/resume_cmd                  | Pub | std_msgs/Empty            | event  | 恢复          |
+
+---
+
+### controller/<grippers>
+| Node               | Topic                               | Dir | Msg Type                      | Freq  | Notes   |
+| ------------------ | ----------------------------------- | --- | ----------------------------- | ----- | ------- |
+| gripper_controller | controller/left_gripper/dirct_ctrl  | Sub | moderos_interfaces/GripperCmd | event | 左夹爪控制输入 |
+| gripper_controller | driver/left_gripper/cmd             | Pub | moderos_interfaces/GripperCmd | event | 左夹爪驱动指令 |
+| gripper_controller | controller/right_gripper/dirct_ctrl | Sub | moderos_interfaces/GripperCmd | event | 右夹爪控制输入 |
+| gripper_controller | driver/right_gripper/cmd            | Pub | moderos_interfaces/GripperCmd | event | 右夹爪驱动指令 |
+
+---
+
+### controller/chassis
+| Node               | Topic                                   | Dir | Msg Type                   | Freq    | Notes  |
+| ------------------ | --------------------------------------- | --- | -------------------------- | ------- | ------ |
+| chassis_controller | driver/chassis/cmd_vel                  | Pub | geometry_msgs/Twist        | event   | 底盘速度输出 |
+| chassis_controller | driver/chassis/stop                     | Pub | std_msgs/Empty             | event   | 底盘急停   |
+| chassis_controller | driver/chassis/odom                     | Sub | nav_msgs/Odometry          | ≤50  Hz | 里程计    |
+| chassis_controller | controller/chassis/dirct_vel_ctrl       | Sub | geometry_msgs/TwistStamped | ≤50  Hz | 直接速度控制 |
+| chassis_controller | controller/chassis/acc_limited_vel_ctrl | Sub | geometry_msgs/TwistStamped | ≤50  Hz | 限加速度控制 |
+| chassis_controller | controller/chassis/stop_cmd             | Sub | std_msgs/Empty             | event   | 急停指令   |
+| chassis_controller | controller/chassis/resume_cmd           | Sub | std_msgs/Empty             | event   | 恢复指令   |
+
+---
+
+### controller/elevator
+| Node                | Topic                                    | Dir | Msg Type                   | Freq    | Notes  |
+| ------------------- | ---------------------------------------- | --- | -------------------------- | ------- | ------ |
+| elevator_controller | driver/elevator/cmd_vel_stamp            | Pub | geometry_msgs/TwistStamped | event   | 速度模式输出 |
+| elevator_controller | driver/elevator/joint_state              | Sub | sensor_msgs/JointState     | 100 Hz  | 高度反馈   |
+| elevator_controller | controller/elevator/dirct_vel_ctrl       | Sub | geometry_msgs/TwistStamped | ≤50 Hz  | 直接速度控制 |
+| elevator_controller | controller/elevator/acc_limited_vel_ctrl | Sub | geometry_msgs/TwistStamped | ≤50 Hz  | 限加速度控制 |
+
+---
+
+### 遥操节点
+| Node      | Topic                                        | Dir | Msg Type                      | Freq  | Notes     |
+| --------- | -------------------------------------------- | --- | ----------------------------- | ----- | --------- |
+| vr_teleop | driver/left_arm/get_pose_cmd                 | Pub | std_msgs/Empty                | event | 获取左臂位姿    |
+| vr_teleop | driver/right_arm/get_pose_cmd                | Pub | std_msgs/Empty                | event | 获取右臂位姿    |
+| vr_teleop | driver/left_arm/get_pose_result              | Sub | geometry_msgs/PoseStamped     | event | 左臂位姿反馈    |
+| vr_teleop | driver/right_arm/get_pose_result             | Sub | geometry_msgs/PoseStamped     | event | 右臂位姿反馈    |
+| vr_teleop | controller/left_arm/linear_interp_pose_ctrl  | Pub | geometry_msgs/PoseStamped     | 60 Hz | 左臂线性插值控制  |
+| vr_teleop | controller/right_arm/linear_interp_pose_ctrl | Pub | geometry_msgs/PoseStamped     | 60 Hz | 右臂线性插值控制  |
+| vr_teleop | controller/left_gripper/dirct_ctrl           | Pub | moderos_interfaces/GripperCmd | 10 Hz | 左夹爪控制     |
+| vr_teleop | controller/right_gripper/dirct_ctrl          | Pub | moderos_interfaces/GripperCmd | 10 Hz | 右夹爪控制     |
+| vr_teleop | controller/chassis/acc_limited_vel_ctrl      | Pub | geometry_msgs/TwistStamped    | 10 Hz | 底盘限速控制    |
+| vr_teleop | controller/elevator/dirct_vel_ctrl           | Pub | geometry_msgs/TwistStamped    | 10 Hz | 升降机直接速度控制 |
+| vr_teleop | controller/left_arm/simple_reset             | Pub | std_msgs/Empty                | event | 左臂一键复位    |
+| vr_teleop | controller/right_arm/simple_reset            | Pub | std_msgs/Empty                | event | 右臂一键复位    |
+| vr_teleop | controller/left_arm/simple_reset_result      | Sub | std_msgs/Bool                 | event | 左臂复位结果    |
+| vr_teleop | controller/right_arm/simple_reset_result     | Sub | std_msgs/Bool                 | event | 右臂复位结果    |
+| vr_teleop | /record_start                                | Cli | std_srvs/Trigger              | event | 启动录制服务    |
+| vr_teleop | /record_stop                                 | Cli | std_srvs/Trigger              | event | 停止录制服务    |
+
+---
+
+| Node       | Topic                                       | Dir | Msg Type                   | Freq  | Notes     |
+| ---------- | ------------------------------------------- | --- | -------------------------- | ----- | --------- |
+| joy_teleop | joy                                         | Sub | sensor_msgs/Joy            | event | 手柄输入数据    |
+| joy_teleop | driver/right_arm/stop_cmd                   | Pub | std_msgs/Empty             | event | 右臂急停      |
+| joy_teleop | driver/right_arm/resume_cmd                 | Pub | std_msgs/Empty             | event | 右臂恢复      |
+| joy_teleop | controller/right_arm/simple_reset           | Pub | std_msgs/Empty             | event | 右臂复位      |
+| joy_teleop | controller/right_arm/simple_reset_result    | Sub | std_msgs/Bool              | event | 右臂复位结果    |
+| joy_teleop | controller/right_arm/move_idle_joint        | Pub | std_msgs/Empty             | event | 右臂移动至空闲位  |
+| joy_teleop | controller/right_arm/move_idle_joint_result | Sub | std_msgs/Bool              | event | 空闲位移动结果   |
+| joy_teleop | driver/left_arm/stop_cmd                    | Pub | std_msgs/Empty             | event | 左臂急停      |
+| joy_teleop | driver/left_arm/resume_cmd                  | Pub | std_msgs/Empty             | event | 左臂恢复      |
+| joy_teleop | controller/left_arm/simple_reset            | Pub | std_msgs/Empty             | event | 左臂复位      |
+| joy_teleop | controller/left_arm/simple_reset_result     | Sub | std_msgs/Bool              | event | 左臂复位结果    |
+| joy_teleop | controller/left_arm/move_idle_joint         | Pub | std_msgs/Empty             | event | 左臂移动至空闲位  |
+| joy_teleop | controller/left_arm/move_idle_joint_result  | Sub | std_msgs/Bool              | event | 左臂空闲位反馈   |
+| joy_teleop | controller/chassis/stop_cmd                 | Pub | std_msgs/Empty             | event | 底盘急停      |
+| joy_teleop | controller/chassis/resume_cmd               | Pub | std_msgs/Empty             | event | 底盘恢复      |
+| joy_teleop | controller/chassis/dirct_vel_ctrl           | Pub | geometry_msgs/TwistStamped | 10 Hz | 底盘直接速度控制  |
+| joy_teleop | controller/elevator/stop_cmd                | Pub | std_msgs/Empty             | event | 升降机急停     |
+| joy_teleop | controller/elevator/resume_cmd              | Pub | std_msgs/Empty             | event | 升降机恢复     |
+| joy_teleop | controller/elevator/dirct_vel_ctrl          | Pub | geometry_msgs/TwistStamped | 10 Hz | 升降机直接控制   |
+
+----
+
+### coinrobot bridge
+| Node             | Topic                               | Dir | Msg Type                      | Freq    | Notes      |
+| ---------------- | ----------------------------------- | --- | ----------------------------- | ------- | ---------- |
+| coinrobot_bridge | driver/left_arm/pose_cmd            | Sub | geometry_msgs/PoseStamped     | ≤200 Hz | 左臂控制指令（姿态） |
+| coinrobot_bridge | driver/left_arm/pose                | Sub | geometry_msgs/PoseStamped     | 100 Hz  | 左臂末端位姿     |
+| coinrobot_bridge | driver/left_arm/joint_state         | Sub | sensor_msgs/JointState        | 100 Hz  | 左臂关节状态     |
+| coinrobot_bridge | driver/right_arm/pose_cmd           | Sub | geometry_msgs/PoseStamped     | ≤200 Hz | 右臂控制指令（姿态） |
+| coinrobot_bridge | driver/right_arm/pose               | Sub | geometry_msgs/PoseStamped     | 100 Hz  | 右臂末端位姿     |
+| coinrobot_bridge | driver/right_arm/joint_state        | Sub | sensor_msgs/JointState        | 100 Hz  | 右臂关节状态     |
+| coinrobot_bridge | controller/left_gripper/dirct_ctrl  | Sub | moderos_interfaces/GripperCmd | event   | 左夹爪控制输入    |
+| coinrobot_bridge | controller/right_gripper/dirct_ctrl | Sub | moderos_interfaces/GripperCmd | event   | 右夹爪控制输入    |
+
 
 ## 安全须知
 
@@ -184,10 +307,10 @@ VR/⼿柄遥操作、任务脚本、桥接到外部系统等。接⼝集中定�
 - 带加速度限制：`controller/chassis/acc_limited_vel_ctrl` 
 
 #### 4.2 发布
-- 统⼀将速度发布为`driver/chassis/cmd_vel_stamp` （ TwistStamped ，发送频率可设，默认5Hz）
+- 统⼀将速度发布为`driver/chassis/cmd_vel` （ Twist，发送频率可设，默认10Hz）
 
 #### 4.3 状态接⼝：
-- 订阅`driver/chassis/odom`与`vehicle_path`以便上层做融合或监控
+- 订阅`driver/chassis/odom`以便上层做融合或监控
 
 ### 5. 相机 `tr4/usb_cam_xxx`
 - 统⼀话题命名（图像、压缩图、深度、深度压缩、点云）已在`interfaces.yaml`约定，频率默认 30 Hz；可以直接在此基础上接⼊感知算法。
@@ -202,7 +325,7 @@ VR/⼿柄遥操作、任务脚本、桥接到外部系统等。接⼝集中定�
 
 
 ## 遥操作方案(已做如下适配)
-1. VR: `vr_teleop` 将⼿势/⼿柄输⼊映射为插值位姿控制（60 Hz）推给`controller/<arm>/line ar_interp_pose_ctrl` ；并将夹⽖命令与底盘/升降机控制分别发布⾄各⾃控制器话题。还提供
+1. VR: `vr_teleop` 将⼿势/⼿柄输⼊映射为插值位姿控制（10 Hz）推给`controller/<arm>/line ar_interp_pose_ctrl` 插值成100hz并转发给driver层；并将夹⽖命令与底盘/升降机控制分别发布⾄各⾃控制器话题。还提供
 `/record_starts` 、`/record_stop` 触发数据录制。
 2. ⼿柄(joy)：`joy_teleop`做“按钮→动作”的映射（如右臂复位、待机/⼯作切换、挥⼿等），并 可下发表层停⽌/恢复命令到底盘/升降机。
 3. 建议：遥操作时优先使⽤“插值/限加速度”的通道，能显著降低抖动与超调⻛险（臂：线性/样条； 底盘/升降机：  ` acc_limited_* `）
@@ -210,9 +333,6 @@ VR/⼿柄遥操作、任务脚本、桥接到外部系统等。接⼝集中定�
 ## 经典操作流程
 ### 1. 机械臂
 - ⼀键复位：发布空消息到 `controller/<arm>/simple_reset` ,等待 `controller/<arm>/si mple_reset_result` 为 `true` 。控制器会在内部清空插值缓存、下发 `MoveJ` 并轮询是 否到位（10 s 超时）。
-- ⼯作位 ↔ 待机位:
-    1. `move_work2idle` ：仅允许从复位位开始执⾏；控制器会按多段关节序列逐步过渡到待 机位，期间每段都做到位判定。
-    2. `move_idle2work`：仅允许从待机位开始执⾏；同样按序列返回复位位
 
 ### 2. 夹⽖
 发布`GripperCmd`⾄`controller/<gripper>/dirct_ctrl`。cmd ：0 开、1 关、3 复位；   vel （速度）与   eff （⼒度）会被限幅后下发到驱动。
@@ -222,9 +342,12 @@ VR/⼿柄遥操作、任务脚本、桥接到外部系统等。接⼝集中定�
 - 位置模式：直接向`driver/elevator/position_cmd`发送`JointState.position[0]=目标高度（m）`
 
 ### 4. 底盘
-推荐向`controller/chassis/acc_limited_vel_ctrl `发送速度指令，控制器会按最⼤速度/加速度限制⽣成  `driver/chassis/cmd_vel_stamp` 。如需⽴即响应的低速微调，可⾛`dirct_vel_ctrl`。
+推荐向`controller/chassis/dirct_vel_ctrl `发送速度指令，控制器会按最⼤速度/加速度限制⽣成  `driver/chassis/cmd_vel` 。
 
 ## 参数与调优要点
+
+参数可在configs文件内修改
+
 ### 1. 手臂（控制）
 - ema_pose_alpha / ema_joint_alpha ：EMA 滤波系数（0~1），越⼩越平滑但延迟越⼤。
 - interp_freq / interp_delay / interp_window_size ：插值发布频率、延迟与窗⼝；线 性/样条两通道均受控;use_local_time  决定⽤本地时间还是消息时间戳参与插值。
@@ -243,12 +366,6 @@ max_linear_vel/acc 、   max_angle_vel/acc  与    cmd_vel_stamp_rate （默 认
 ### 5. 升降机
 驱动串⼝    serial_port （默认    /dev/ttyUSB0 ）、初始位置    init_pos （mm）、回传频率    joint_state_hz （默认 100 Hz）。
 
-## 数据采集与回读
-1.   单次回读：
-a.   向    driver/<arm>/get_pose_cmd  /   get_joint_state_cmd  发空消息，驱动将把当前值 发⾄    get_pose_result  /   get_joint_state_result 。适合打标/抓取关键帧。
-2.   全程录制：通过    /record_start  与    /record_stop  服务触发（在    vr_teleop  中预置）。
-3.   跨系统传输：订阅    /translator_json/*  JSON 话题（带时间戳与    frame_id ），便于⾮ ROS 系统落盘或远程显示
-
 ## 故障排查(常⻅报错与处理)
 
 | 现象/日志                                | 可能原因                           | 处理方法 |
@@ -257,40 +374,7 @@ a.   向    driver/<arm>/get_pose_cmd  /   get_joint_state_cmd  发空消息，�
 | **Pose command is not safe**             | 位姿跳变 > 0.2 m，被控制器拒绝     | 使用插值/EMA 通道逐步推送，避免大幅跳变 |
 | **Failed to move to target joints/pose** | 关节越限 / 速度越限 / 奇异位姿     | 调整姿态；检查 `ik_traversal_mode` 与限位；必要时改用关节直控 |
 | **Chassis is stopped, please resume first** | 底盘控制器处于停止状态           | 发布 `controller/chassis/resume_cmd` 后再下发速度 |
-| **Elevator is stopped**                  | 升降机处于 `stop` 状态             | 发布 `driver/elevator/resume_cmd` 或控制层对应恢复话题 |
-| **夹爪没有动作**                         | 速度/力度超限，被截断为 0          | 调整 `vel/eff`；并确认 `max_vel/max_eff` 参数设置合理 |
-
-
-## 常用指令
-### 1. 启动
-```bash
-# 启动驱动层
-ros2 launch tr4_bringup bringup_drivers.launch.py
-
-# 启动控制层
-ros2 launch tr4_bringup bringup_controllers.launch.py
-
-# 启动遥操作 (VR/手柄)
-ros2 launch tr4_vr_teleop vr_teleop.launch.py
-```
-
-### 2. 线性插值控制左臂末端（60 Hz）
-```bash
-ros2 topic pub -r 60 controller/left_arm/linear_interp_pose_ctrl/geometry_msgs/PoseStamped "{header: {frame_id: 'left_arm_base_link'}, pose:{position: {x: 0.45, y: 0.10, z: 0.25}, orientation: {x:0, y:0, z:0, w:1}}}"
-```
-控制器会按`interp_freq` / `interp_delay` 插值并发布到 `driver/left_arm/pose_cmd` 。
-
-### 3. 底盘加速度受限⾏驶
-```bash
-ros2 topic pub controller/chassis/acc_limited_vel_ctrl/geometry_msgs/TwistStamped "{twist: {linear: {x: 0.2}}}"
-```
-控制器会限加速度与速度并转发 `driver/chassis/cmd_vel_stamp` 。
-
-### 4. 升降机到 0.6 m（位置模式）
-```bash
-ros2 topic pub driver/elevator/position_cmd sensor_msgs/JointState "{position:[0.6]}"
-```
-驱动内部按 ×1000 换算为电机单位。
+| **夹爪没有动作**                         | 初次上电后未置零          | `ros2 topic pub controller/left_gripper/dirct_ctrl/moderos_interfaces/GripperCmd "{cmd: 3, vel: 800, eff: 30}"`  发布置零指令|
 
 ### 5. 夹⽖开/关
 ```bash

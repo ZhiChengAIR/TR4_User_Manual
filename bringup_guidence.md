@@ -1,6 +1,9 @@
 # TR4 Bringup guidence
 TR4基础运控的代码与环境已经打包在docker镜像内，详情请见 [tr4_docker](https://github.com/ZhiChengAIR/tr4_docker)
 
+## 启动TR4
+TR4 共有2个开关，分别位于背部和底盘后面。背部开关负责双臂，升降，wifi，主控的供电。底盘开关负责底盘单独供电。首先先启动背部和底盘开关（如无需移动可不启动底盘）
+
 ## 连接TR4
 
 ### 有线连接（推荐）
